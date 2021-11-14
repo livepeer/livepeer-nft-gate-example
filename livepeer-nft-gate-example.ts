@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import express from "express";
 import { json } from "body-parser";
+import httpProxy from "http-proxy";
 const ethers = require("ethers");
 const abi = require("./erc-1155.json");
 
@@ -14,7 +15,11 @@ const TOKEN_ID =
 // String to be signed
 const SIGN_STRING = "I have the NFT! Give me access.";
 
+// Ethereum HTTP-RPC URL
 const ETH_URL = "https://mainnet.infura.io/v3/6459dec09c9b4730a4cd6a9dc6d364d4";
+
+// Livepeer.com livestream bnehind the gate
+const LIVEPEER_URL = "https://cdn.livepeer.com/hls/cfd2ze0zfwi4c4lu";
 
 const provider = ethers.getDefaultProvider(ETH_URL);
 
@@ -25,6 +30,11 @@ const openseaContract = new ethers.Contract(
 );
 
 const app = express();
+const proxy = httpProxy.createServer({
+  target: LIVEPEER_URL,
+  changeOrigin: true,
+  ignorePath: true,
+});
 
 app.use(json());
 app.use((req, res, next) => {
@@ -58,6 +68,15 @@ app.post("/check", async (req, res) => {
     res.status(500);
     res.json({ error: e.stack });
   }
+});
+
+app.get("/hls/*", (req, res) => {
+  const params = req.params as any;
+  const target = `${LIVEPEER_URL}/${params[0]}`;
+  console.log(`routing ${req.url} --> ${target}`);
+  proxy.web(req, res, {
+    target: `${LIVEPEER_URL}/${params[0]}`,
+  });
 });
 
 app.listen(process.env.PORT ?? 3001);
