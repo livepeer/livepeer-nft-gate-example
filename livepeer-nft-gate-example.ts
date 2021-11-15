@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import express from "express";
 import { json } from "body-parser";
 import httpProxy from "http-proxy";
+import cookieParser from "cookie-parser";
+import morgan from "morgan";
 const ethers = require("ethers");
 const abi = require("./erc-1155.json");
 
@@ -19,7 +21,7 @@ const SIGN_STRING = "I have the NFT! Give me access.";
 const ETH_URL = "https://mainnet.infura.io/v3/6459dec09c9b4730a4cd6a9dc6d364d4";
 
 // Livepeer.com livestream bnehind the gate
-const LIVEPEER_URL = "https://cdn.livepeer.com/hls/cfd2ze0zfwi4c4lu";
+const LIVEPEER_URL = "https://cdn.livepeer.com/hls/5bd2nu8u6zi0lia7";
 
 const provider = ethers.getDefaultProvider(ETH_URL);
 
@@ -36,7 +38,10 @@ const proxy = httpProxy.createServer({
   ignorePath: true,
 });
 
+app.use(morgan("dev"));
 app.use(json());
+app.use(cookieParser());
+
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Method", "*");
@@ -52,16 +57,33 @@ app.get("/info", (req: Request, res: Response) => {
   });
 });
 
+// We don't want to hit the Ethereum API every request, so keep a cache
+const authCache: { [signature: string]: string } = {};
+
+// Check that the provided signature owns the required NFT
+const checkSig = async (signature: string) => {
+  if (authCache[signature]) {
+    return authCache[signature];
+  }
+  const address = ethers.utils.verifyMessage(SIGN_STRING, signature);
+  const balance = await openseaContract.balanceOf(address, TOKEN_ID);
+  if (balance.toNumber() < 1) {
+    return null;
+  }
+  authCache[signature] = address;
+  return address;
+};
+
+// Endpoint for checking the signature and setting the appropriate playback cookie
 app.post("/check", async (req, res) => {
   try {
-    console.log(req.body);
     const { signature } = req.body;
-    const address = ethers.utils.verifyMessage(SIGN_STRING, signature);
-    const balance = await openseaContract.balanceOf(address, TOKEN_ID);
-    if (balance.toNumber() < 1) {
+    const address = await checkSig(signature);
+    if (address === null) {
       res.status(403);
       return res.json({ error: "You don't have this NFT." });
     }
+    res.cookie("nft-signature", signature);
     res.json({ info: `Welcome, ${address}.` });
   } catch (e: any) {
     console.error(e);
@@ -70,13 +92,41 @@ app.post("/check", async (req, res) => {
   }
 });
 
-app.get("/hls/*", (req, res) => {
-  const params = req.params as any;
-  const target = `${LIVEPEER_URL}/${params[0]}`;
-  console.log(`routing ${req.url} --> ${target}`);
-  proxy.web(req, res, {
-    target: `${LIVEPEER_URL}/${params[0]}`,
-  });
+// Proxy endpoint that checks the cookie and forwards the request to Livepeer.com
+app.get("/hls/*", async (req, res) => {
+  try {
+    // First, check the signature in the cookie
+    const signature = req.cookies["nft-signature"];
+    if (!signature) {
+      res.status(403);
+      res.json({ error: "Signature cookie not found" });
+    }
+    const address = await checkSig(signature);
+    if (address === null) {
+      res.status(403);
+      return res.json({ error: "Signature cookie doesn't match" });
+    }
+
+    // Then, proxy the request
+    const params = req.params as any;
+    const target = `${LIVEPEER_URL}/${params[0]}`;
+    console.log(`routing ${req.url} --> ${target}`);
+    proxy.web(req, res, {
+      target: `${LIVEPEER_URL}/${params[0]}`,
+    });
+  } catch (e: any) {
+    console.error(e);
+    res.status(500);
+    res.json({ error: e.stack });
+  }
+});
+
+// Proxy for local Parsec
+const devProxy = httpProxy.createServer({
+  target: "http://localhost:3000",
+});
+app.get("*", (req, res) => {
+  devProxy.web(req, res);
 });
 
 app.listen(process.env.PORT ?? 3001);

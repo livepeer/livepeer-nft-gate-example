@@ -1,11 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { ethers } from "ethers";
-console.log(ethers);
+import HLS from "hls.js";
+
+declare let window: any;
 
 const App = () => {
   const [info, setInfo] = useState(null);
   const [errorText, setErrorText] = useState("");
+  const [showVideo, setShowVideo] = useState(false);
+
+  // On first load, scrape the NFT info
   useEffect(() => {
     fetch("http://localhost:3001/info")
       .then((res) => res.json())
@@ -53,6 +58,7 @@ const App = () => {
             if (data.error) {
               throw new Error(data.error);
             }
+            setShowVideo(true);
           } catch (e) {
             setErrorText(e.message);
           }
@@ -61,6 +67,27 @@ const App = () => {
         Log in
       </button>
       <h3 style={{ color: "red" }}>{errorText}</h3>
+      {showVideo && (
+        <video
+          style={{ width: 1280, height: 720, backgroundColor: "black" }}
+          ref={(ref) => {
+            if (!ref) {
+              return;
+            }
+            if (HLS.isSupported()) {
+              var hls = new HLS({
+                debug: true,
+              });
+              hls.loadSource("http://localhost:3001/hls/index.m3u8");
+              hls.attachMedia(ref);
+              hls.on(HLS.Events.MEDIA_ATTACHED, function () {
+                ref.muted = true;
+                ref.play();
+              });
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
