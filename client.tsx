@@ -51,7 +51,6 @@ const App = () => {
               },
               body: JSON.stringify({
                 signature: signed,
-                address: (await signer.getAddress()).toString(),
               }),
             });
             const data = await res.json();
@@ -65,6 +64,26 @@ const App = () => {
         }}
       >
         Log in
+      </button>
+      <button
+        onClick={async () => {
+          const res = await fetch("http://localhost:3001/check", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              signature: "FAKE_SIGNATURE",
+            }),
+          });
+          const data = await res.json();
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          setShowVideo(true);
+        }}
+      >
+        Fake log in (for testing)
       </button>
       <h3 style={{ color: "red" }}>{errorText}</h3>
       {showVideo && (

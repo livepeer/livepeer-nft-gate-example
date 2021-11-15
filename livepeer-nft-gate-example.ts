@@ -23,6 +23,9 @@ const ETH_URL = "https://mainnet.infura.io/v3/6459dec09c9b4730a4cd6a9dc6d364d4";
 // Livepeer.com livestream bnehind the gate
 const LIVEPEER_URL = "https://cdn.livepeer.com/hls/5bd2nu8u6zi0lia7";
 
+// Fake signature for demo purposes
+const FAKE_SIGNATURE = "FAKE_SIGNATURE";
+
 const provider = ethers.getDefaultProvider(ETH_URL);
 
 const openseaContract = new ethers.Contract(
@@ -62,6 +65,9 @@ const authCache: { [signature: string]: string } = {};
 
 // Check that the provided signature owns the required NFT
 const checkSig = async (signature: string) => {
+  if (signature === FAKE_SIGNATURE) {
+    return "0x0000000000000000000000000000000000000000";
+  }
   if (authCache[signature]) {
     return authCache[signature];
   }
@@ -110,7 +116,7 @@ app.get("/hls/*", async (req, res) => {
     // Then, proxy the request
     const params = req.params as any;
     const target = `${LIVEPEER_URL}/${params[0]}`;
-    console.log(`routing ${req.url} --> ${target}`);
+    // console.log(`routing ${req.url} --> ${target}`);
     proxy.web(req, res, {
       target: `${LIVEPEER_URL}/${params[0]}`,
     });
