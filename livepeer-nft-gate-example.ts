@@ -21,7 +21,7 @@ const SIGN_STRING = "I have the NFT! Give me access.";
 const ETH_URL = "https://mainnet.infura.io/v3/6459dec09c9b4730a4cd6a9dc6d364d4";
 
 // Livepeer.com livestream bnehind the gate
-const LIVEPEER_URL = "https://cdn.livepeer.com/hls/5bd2nu8u6zi0lia7";
+const LIVEPEER_URL = "https://cdn.livepeer.com/hls/cfd2ze0zfwi4c4lu";
 
 // Fake signature for demo purposes
 const FAKE_SIGNATURE = "FAKE_SIGNATURE";
