@@ -1,13 +1,13 @@
 # Livepeer NFT Gate Example
 
-Video bits WIP, but will involve proxying requests to Livepeer.com.
-
 ### Running
 
 ```
 yarn install
 yarn run start
 ```
+
+Then check `http://localhost:3001` to get access to the server (which proxies through to the client.)
 
 ### Hacking
 
