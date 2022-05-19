@@ -1,19 +1,39 @@
-import "@ethersproject/shims";
-import { ethers } from "ethers";
+import { ethers, BigNumber } from "ethers";
+import "isomorphic-fetch";
 const erc721 = require("./erc-721");
-import { BigNumber } from "ethers";
+
+class LivepeerProvider extends ethers.providers.StaticJsonRpcProvider {
+  async send(method: string, params: any): Promise<any> {
+    const body = {
+      method: method,
+      params: params,
+      id: 42,
+      jsonrpc: "2.0",
+    };
+    const res = await fetch(this.connection.url, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: this.connection.headers as any,
+    });
+    if (res.status !== 200) {
+      throw new Error(`Error HTTP ${res.status}: ${await res.text()}`);
+    }
+    const data = (await res.json()) as any;
+    return data.result;
+  }
+}
 
 async function getResponse(): Promise<BigNumber> {
   // const { proof } = await request.json();
-  // const ETH_URL = "https://polygon-rpc.com/";
-  const ETH_URL = "https://webhook.site/0a626d13-81e3-43f8-be7f-56cf69c1992c";
+  const ETH_URL = "https://polygon-rpc.com/";
+  // const ETH_URL = "https://webhook.site/0a626d13-81e3-43f8-be7f-56cf69c1992c";
   // const ETH_URL =
   //   "https://mainnet.infura.io/v3/6459dec09c9b4730a4cd6a9dc6d364d4";
   const NFT_CONTRACT_ADDRESS = "0x69c53e7b8c41bf436ef5a2d81db759dc8bd83b5f";
   const SIGN_STRING = "I have the NFT! Give me access.";
 
   // const provider = ethers.getDefaultProvider(ETH_URL);
-  const provider = new ethers.providers.StaticJsonRpcProvider(
+  const provider = new LivepeerProvider(
     {
       url: ETH_URL,
       headers: {
