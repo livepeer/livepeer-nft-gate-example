@@ -2,7 +2,7 @@
   "name": "livepeer-nft-gate-example",
   "version": "0.0.1",
   "description": "Example of gating a Livepeer stream behind an NFT",
-  "main": "index.js",
+  "main": "check-video-nft.js",
   "scripts": {
     "start": "run-p start:server start:client",
     "start:server": "parcel serve --port=3000 index.html",
@@ -11,12 +11,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@ethersproject/shims": "^5.6.0",
     "@types/cookie-parser": "^1.4.2",
     "@types/express": "^4.17.13",
     "@types/morgan": "^1.9.3",
     "body-parser": "^1.19.0",
     "cookie-parser": "^1.4.5",
-    "ethers": "^5.5.1",
+    "ethers": "^5.6.5",
     "express": "^4.17.1",
     "http-server": "^14.0.0",
     "morgan": "^1.10.0",
@@ -29,5 +30,24 @@
     "ts-node-dev": "^1.1.8",
     "typescript": "^4.4.4",
     "web3": "^1.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^3.10.0",
+    "@types/http-proxy": "^1.17.9",
+    "@types/jest": "^27.5.1",
+    "@types/service-worker-mock": "^2.0.1",
+    "assert": "^2.0.0",
+    "events": "^3.3.0",
+    "https-browserify": "^1.0.0",
+    "os-browserify": "^0.3.0",
+    "querystring-es3": "^0.2.1",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "url": "^0.11.0"
+  },
+  "targets": {
+    "worker": {
+      "includeNodeModules": true
+    }
   }
 }
