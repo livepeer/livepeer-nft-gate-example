@@ -22,6 +22,14 @@ for (const [key, value] of firstUrl.searchParams) {
   }
 }
 
+const sample = (gateParams) => `
+{
+  "name": "gate for ${gateParams.contract}",
+  "url": "${window.location.href}",
+  "events": ["playback.user.new"]
+}
+`;
+
 const App = () => {
   const [errorText, setErrorText] = useState("");
   const [showVideo, setShowVideo] = useState(false);
@@ -129,6 +137,18 @@ const App = () => {
       </button>
       <h3 style={{ color: "red" }}>{errorText}</h3>
       {proof && <MistPlayer index={proof} proof={proof} />}
+
+      <h4>Step 3: Create your webhook</h4>
+      <p>
+        If this gate is working how you'd like, you should create a webhook that
+        looks something like this:
+        <pre>
+          <code>{sample(gate)}</code>
+        </pre>
+      </p>
+
+      <h4>Step 4: Embed this player in your site</h4>
+      <p>Coming soon!</p>
     </main>
   );
 };

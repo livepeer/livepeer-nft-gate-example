@@ -136,7 +136,7 @@ async function handleRequest(request: Request): Promise<Response> {
     if (balance.gt(0)) {
       return new Response("ok", { status: 200 });
     } else {
-      return new Response(`Not enough NFTs. ${JSON.stringify(gateParams)}`, {
+      return new Response(`Not enough NFTs.`, {
         status: 403,
       });
     }
