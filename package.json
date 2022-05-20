@@ -4,9 +4,10 @@
   "description": "Example of gating a Livepeer stream behind an NFT",
   "main": "check-video-nft.js",
   "scripts": {
-    "start": "run-p start:server start:client",
-    "start:server": "parcel serve --port=3000 index.html",
-    "start:client": "PORT=3001 nodemon livepeer-nft-gate-example.ts"
+    "prepare": "parcel build --target worker check-video-nft.ts",
+    "start": "miniflare dist/check-video-nft.js",
+    "rebuild": "run-s prepare start",
+    "dev": "nodemon --ext ts -x npm run rebuild"
   },
   "author": "",
   "license": "ISC",
