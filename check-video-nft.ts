@@ -1,65 +1,134 @@
-import { ethers, BigNumber } from "ethers";
 import "isomorphic-fetch";
-const erc721 = require("./erc-721");
+import { ethers, BigNumber } from "ethers";
+import * as standards from "./standards";
 
-class LivepeerProvider extends ethers.providers.StaticJsonRpcProvider {
-  async send(method: string, params: any): Promise<any> {
-    const body = {
-      method: method,
-      params: params,
-      id: 42,
-      jsonrpc: "2.0",
-    };
-    const res = await fetch(this.connection.url, {
-      method: "POST",
-      body: JSON.stringify(body),
-      headers: this.connection.headers as any,
-    });
-    if (res.status !== 200) {
-      throw new Error(`Error HTTP ${res.status}: ${await res.text()}`);
+const ERC721 = "erc721";
+const ERC1155 = "erc1155";
+const SIGN_STRING = "I have the NFT! Give me access.";
+
+const chainList = require("./chains");
+type Chains = {
+  [key: string]: any;
+};
+const chains: Chains = {};
+for (const chain of chainList) {
+  const hex = `0x${chain.chainId.toString(16)}`;
+  for (let key of [chain.shortName, chain.chainId, hex]) {
+    key = `${key}`.toLowerCase();
+    if (chains[key]) {
+      console.error(
+        `duplicate for key ${key}: ${chains[key].name} and ${chain.name}`
+      );
+    } else {
+      chains[key] = chain;
     }
-    const data = (await res.json()) as any;
-    return data.result;
   }
 }
 
-async function getResponse(): Promise<BigNumber> {
-  // const { proof } = await request.json();
-  const ETH_URL = "https://polygon-rpc.com/";
-  // const ETH_URL = "https://webhook.site/0a626d13-81e3-43f8-be7f-56cf69c1992c";
-  // const ETH_URL =
-  //   "https://mainnet.infura.io/v3/6459dec09c9b4730a4cd6a9dc6d364d4";
-  const NFT_CONTRACT_ADDRESS = "0x69c53e7b8c41bf436ef5a2d81db759dc8bd83b5f";
-  const SIGN_STRING = "I have the NFT! Give me access.";
+type GateParams = {
+  contract?: string;
+  standard?: string;
+  network?: string;
+  message?: string;
+  proof?: string;
+};
+async function getResponse({
+  contract,
+  standard = ERC721,
+  network = "eth",
+  message = SIGN_STRING,
+  proof,
+}: GateParams): Promise<BigNumber> {
+  if (!contract) {
+    throw new Error("missing contract");
+  }
+  if (!proof) {
+    throw new Error("Missing proof");
+  }
+  const chain = chains[network.toLowerCase()];
+  if (!chain) {
+    throw new Error(`network ${network} not found`);
+  }
+  let rpc;
+  for (const url of chain.rpc) {
+    if (!url.startsWith("https://")) {
+      continue;
+    }
+
+    // Skip URLs that require interpolation (API Keys)
+    if (url.includes("${")) {
+      continue;
+    }
+
+    rpc = url;
+    break;
+  }
+  if (!rpc) {
+    throw new Error(`RPC address not found for ${network}`);
+  }
+  let abi;
+  if (standard === ERC721) {
+    abi = standards[ERC721];
+  } else if (standard == ERC1155) {
+    abi = standards[ERC1155];
+  } else {
+    throw new Error(`uknown standard: ${standard}`);
+  }
 
   // const provider = ethers.getDefaultProvider(ETH_URL);
-  const provider = new LivepeerProvider(
+  const provider = new ethers.providers.StaticJsonRpcProvider(
     {
-      url: ETH_URL,
+      url: rpc,
+      skipFetchSetup: true,
       headers: {
         "user-agent": "livepeer/gate",
       },
     },
-    137
-  );
-  // await provider.ready;
-
-  const openseaContract = new ethers.Contract(
-    NFT_CONTRACT_ADDRESS,
-    erc721,
-    provider
+    chain.chainId
   );
 
-  const proof =
-    "0xcf3708006566be50200fb4257f97e36f1fe3ad2c34a2c03d6395aa71b81ed8186af1432d1aa4e43284dfb2bf1e3b0f0b063ad461172f116685b8e842953cb2b71b";
+  const contractObj = new ethers.Contract(contract, abi, provider);
+
   const address = ethers.utils.verifyMessage(SIGN_STRING, proof);
-  console.log(address);
-  return await openseaContract.balanceOf(address);
+  return await contractObj.balanceOf(address);
 }
 
+type WebhookPayload = {
+  requestUrl: string;
+};
+type Webhook = {
+  payload: WebhookPayload;
+};
+
 async function handleRequest(request: Request): Promise<Response> {
+  if (request.method === "GET") {
+    return new Response(
+      "Hello. I'm the Livepeer token gating worker. You can use the following query parameters: contract standard network message proof"
+    );
+  }
+
+  const gateParams: GateParams = {};
+  // Extract parameters from query params
+  const { searchParams } = new URL(request.url);
+  for (const [key, value] of searchParams) {
+    gateParams[key] = value;
+  }
+
+  // Extract proof from webhook body
+  const data = (await request.json()) as Webhook;
+  const requestUrl: string = data?.payload?.requestUrl;
+  if (!requestUrl) {
+    throw new Error("payload.url not found");
+  }
+  const payloadUrl = new URL(requestUrl);
+  const proof = payloadUrl.searchParams.get("proof");
+  if (!proof) {
+    throw new Error("`proof` query parameter missing from url");
+  }
+  gateParams.proof = proof;
+
   try {
-    const balance = await getResponse();
+    const balance = await getResponse(gateParams);
     if (balance.gt(0)) {
       return new Response("ok", { status: 200 });
     } else {
@@ -75,7 +144,13 @@ if (typeof addEventListener === "function") {
     event.respondWith(handleRequest(event.request as Request));
   });
 } else if (typeof module === "object" && !module.parent) {
-  getResponse()
+  getResponse({
+    standard: "erc721",
+    contract: "0x69c53e7b8c41bf436ef5a2d81db759dc8bd83b5f",
+    network: "matic",
+    proof:
+      "0xcf3708006566be50200fb4257f97e36f1fe3ad2c34a2c03d6395aa71b81ed8186af1432d1aa4e43284dfb2bf1e3b0f0b063ad461172f116685b8e842953cb2b71b",
+  })
     .then((x) => console.log(x.toNumber()))
     .catch((...x) => console.log(x));
 }
