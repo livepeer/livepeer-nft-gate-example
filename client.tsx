@@ -5,7 +5,7 @@ import HLS from "hls.js";
 
 declare let window: any;
 
-// Hydrate the
+// Hydrate the starting parameters
 const initialGate = {
   contract: "",
   network: "eth",
@@ -16,7 +16,6 @@ const initialGate = {
 const firstUrl = new URL(window.location.href);
 for (const [key, value] of firstUrl.searchParams) {
   for (const gateKey of Object.keys(initialGate)) {
-    console.log(key, gateKey);
     if (key === gateKey) {
       initialGate[key] = value;
     }
@@ -63,9 +62,19 @@ const App = () => {
           }
         >
           &nbsp;ERC-721
-          <input type="radio" value="erc721" name="standard" />
+          <input
+            type="radio"
+            value="erc721"
+            name="standard"
+            checked={gate.standard === "erc721"}
+          />
           &nbsp;ERC-1155
-          <input type="radio" value="erc1155" name="standard" />
+          <input
+            type="radio"
+            value="erc1155"
+            name="standard"
+            checked={gate.standard === "erc1155"}
+          />
         </div>
       </div>
       <div>
@@ -76,6 +85,12 @@ const App = () => {
           placeholder="I have the NFT! Give me access."
         ></input>
       </div>
+
+      <h4>Step 2: Test your Gate</h4>
+      <p>
+        This will attempt a log in to your gate. If successful, it will play a
+        test stream.
+      </p>
       <button
         onClick={async () => {
           try {
@@ -87,7 +102,23 @@ const App = () => {
             // Prompt user for account connections
             await provider.send("eth_requestAccounts", []);
             const signer = provider.getSigner();
-            const signed = await signer.signMessage(info.signString);
+            const signed = await signer.signMessage(gate.message);
+            const res = await fetch(window.location.href, {
+              method: "POST",
+              body: JSON.stringify({
+                payload: {
+                  requestUrl: `https://example.com/hls/fake-stream.m3u8?streamId=fake-stream&proof=${encodeURIComponent(
+                    signed
+                  )}`,
+                },
+              }),
+            });
+            const data = await res.text();
+            if (res.status !== 200) {
+              setErrorText(data);
+              return;
+            }
+            console.log(data);
             setProof(signed);
           } catch (e) {
             setErrorText(e.message);
@@ -96,15 +127,8 @@ const App = () => {
       >
         Log in
       </button>
-      <button
-        onClick={async () => {
-          setShowVideo(true);
-        }}
-      >
-        Fake log in (for testing)
-      </button>
       <h3 style={{ color: "red" }}>{errorText}</h3>
-      {(showVideo || proof) && <MistPlayer proof={proof} index={proof} />}
+      {proof && <MistPlayer index={proof} proof={proof} />}
     </main>
   );
 };
@@ -113,14 +137,14 @@ const MistPlayer = ({ proof, index }) => {
   useEffect(() => {
     setTimeout(() => {
       var a = function () {
-        window.mistPlay("b135bpp8yefanya8", {
+        window.mistPlay("5208b31slogl2gw4", {
           target: document.getElementById("mistvideo"),
           urlappend: `?proof=${proof}`,
-          forcePlayer: "hlsjs",
-          forceType: "html5/application/vnd.apple.mpegurl",
-          forcePriority: {
-            source: [["type", ["html5/application/vnd.apple.mpegurl"]]],
-          },
+          // forcePlayer: "hlsjs",
+          // forceType: "html5/application/vnd.apple.mpegurl",
+          // forcePriority: {
+          //   source: [["type", ["html5/application/vnd.apple.mpegurl"]]],
+          // },
         });
       };
       if (!window.mistplayers) {
@@ -133,7 +157,7 @@ const MistPlayer = ({ proof, index }) => {
       }
     });
   }, [proof]);
-  return <div index={index} class="mistvideo" id="mistvideo"></div>;
+  return <div className="mistvideo" id="mistvideo"></div>;
 };
 
 ReactDOM.render(<App />, document.querySelector("main"));

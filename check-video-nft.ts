@@ -92,7 +92,7 @@ async function getResponse({
 
   const contractObj = new ethers.Contract(contract, abi, provider);
 
-  const address = ethers.utils.verifyMessage(SIGN_STRING, proof);
+  const address = ethers.utils.verifyMessage(message, proof);
   return await contractObj.balanceOf(address);
 }
 
@@ -122,12 +122,12 @@ async function handleRequest(request: Request): Promise<Response> {
   const data = (await request.json()) as Webhook;
   const requestUrl: string = data?.payload?.requestUrl;
   if (!requestUrl) {
-    throw new Error("payload.url not found");
+    return new Response("payload.url not found", { status: 413 });
   }
   const payloadUrl = new URL(requestUrl);
   const proof = payloadUrl.searchParams.get("proof");
   if (!proof) {
-    throw new Error("`proof` query parameter missing from url");
+    return new Response("`proof` query parameter missing from payload url");
   }
   gateParams.proof = proof;
 
@@ -136,7 +136,9 @@ async function handleRequest(request: Request): Promise<Response> {
     if (balance.gt(0)) {
       return new Response("ok", { status: 200 });
     } else {
-      return new Response("get more NFTs, nerd", { status: 403 });
+      return new Response(`Not enough NFTs. ${JSON.stringify(gateParams)}`, {
+        status: 403,
+      });
     }
   } catch (e: any) {
     return new Response(e.message, { status: 500 });

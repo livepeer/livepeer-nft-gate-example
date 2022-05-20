@@ -9,7 +9,7 @@
     "prepare:client": "parcel build --target worker index.html",
     "start": "miniflare dist/check-video-nft.js",
     "rebuild": "run-s prepare start",
-    "dev": "nodemon --ext ts -x npm run rebuild"
+    "dev": "nodemon --ext ts,tsx -x npm run rebuild"
   },
   "author": "",
   "license": "ISC",
