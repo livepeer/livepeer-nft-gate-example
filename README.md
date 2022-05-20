@@ -4,11 +4,9 @@
 
 ```
 yarn install
-yarn run start
+yarn run dev
 ```
 
-Then check `http://localhost:3001` to get access to the server (which proxies through to the client.)
+Then check `http://localhost:8787`.
 
-### Hacking
-
-Check the constants at the top of `livepeer-nft-gate-example.ts` to customize this for a desired NFT.
+Video playback probably won't work without https, but development through ngrok works just fine: `ngrok http 8787`.
