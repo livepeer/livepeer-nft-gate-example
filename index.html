@@ -5,15 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Livepeer NFT Gate Example</title>
     <style>
+      html {
+        font-family: sans-serif;
+      }
       html,
       body,
       main {
         height: 100%;
       }
+      main {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: stretch;
+        max-width: 800px;
+        margin: auto;
+      }
+      div {
+        padding: 1em;
+        display: flex;
+      }
+      input {
+        flex-grow: 1;
+      }
+      input[type="radio"] {
+        display: inline;
+      }
+      textarea {
+        width: 100%;
+        height: 3em;
+      }
     </style>
   </head>
   <body>
     <main></main>
-    <script src="client.tsx" type="module"></script>
+    <script src="data-url:client.tsx" type="module"></script>
   </body>
 </html>

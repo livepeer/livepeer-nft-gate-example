@@ -1,6 +1,9 @@
 import "isomorphic-fetch";
 import { ethers, BigNumber } from "ethers";
 import * as standards from "./standards";
+import fs from "fs";
+
+const frontend = fs.readFileSync(__dirname + "/dist/index.html", "utf8");
 
 const ERC721 = "erc721";
 const ERC1155 = "erc1155";
@@ -102,9 +105,10 @@ type Webhook = {
 
 async function handleRequest(request: Request): Promise<Response> {
   if (request.method === "GET") {
-    return new Response(
-      "Hello. I'm the Livepeer token gating worker. You can use the following query parameters: contract standard network message proof"
-    );
+    // Print out the frontend if present
+    return new Response(frontend, {
+      headers: { "content-type": "text/html; charset=UTF-8" },
+    });
   }
 
   const gateParams: GateParams = {};

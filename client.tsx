@@ -5,33 +5,77 @@ import HLS from "hls.js";
 
 declare let window: any;
 
+// Hydrate the
+const initialGate = {
+  contract: "",
+  network: "eth",
+  standard: "erc721",
+  message: `Hello, I hold this NFT. Please let me in.`,
+};
+
+const firstUrl = new URL(window.location.href);
+for (const [key, value] of firstUrl.searchParams) {
+  for (const gateKey of Object.keys(initialGate)) {
+    console.log(key, gateKey);
+    if (key === gateKey) {
+      initialGate[key] = value;
+    }
+  }
+}
+
 const App = () => {
-  const [info, setInfo] = useState(null);
   const [errorText, setErrorText] = useState("");
   const [showVideo, setShowVideo] = useState(false);
+  const [proof, setProof] = useState(null);
+  const [gate, setGate] = useState(initialGate);
 
-  // On first load, scrape the NFT info
   useEffect(() => {
-    fetch("http://localhost:3001/info")
-      .then((res) => res.json())
-      .then((info) => setInfo(info));
-  }, []);
-  if (!info) {
-    return <div />;
-  }
+    const params = new URLSearchParams(gate);
+    const newUrl = new URL(window.location.href);
+    newUrl.search = `?${params}`;
+    window.history.replaceState(null, "", newUrl);
+  }, [gate]);
+
   return (
-    <div>
-      <h3>This livestream is only viewable by holders of a certain NFT.</h3>
-      <p>
-        Token ID: <code>{info.tokenId}</code>
-        <br />
-        Contract Address: <code>{info.contractAddress}</code> <br />
-        <a
-          href={`https://opensea.io/assets/${info.contractAddress}/${info.tokenId}`}
+    <main>
+      <h3>Create a livestream only viewable by holders of a certain NFT!</h3>
+      <h4>Step 1: Define Gate</h4>
+      <div>
+        Token Contract Address:
+        <input
+          value={gate.contract}
+          onChange={(e) => setGate({ ...gate, contract: e.target.value })}
+        ></input>
+      </div>
+      <div>
+        Network (default eth):
+        <input
+          value={gate.network}
+          onChange={(e) => setGate({ ...gate, network: e.target.value })}
+          placeholder="eth"
+        ></input>
+      </div>
+      <div>
+        Token Standard (default erc721):
+        <div
+          onChange={(e) =>
+            setGate({ ...gate, standard: (e.target as any).value })
+          }
         >
-          Link at OpenSea
-        </a>
-      </p>
+          &nbsp;ERC-721
+          <input type="radio" value="erc721" name="standard" />
+          &nbsp;ERC-1155
+          <input type="radio" value="erc1155" name="standard" />
+        </div>
+      </div>
+      <div>
+        Message to sign
+        <input
+          value={gate.message}
+          onChange={(e) => setGate({ ...gate, message: e.target.value })}
+          placeholder="I have the NFT! Give me access."
+        ></input>
+      </div>
       <button
         onClick={async () => {
           try {
@@ -44,20 +88,7 @@ const App = () => {
             await provider.send("eth_requestAccounts", []);
             const signer = provider.getSigner();
             const signed = await signer.signMessage(info.signString);
-            const res = await fetch("http://localhost:3001/check", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                signature: signed,
-              }),
-            });
-            const data = await res.json();
-            if (data.error) {
-              throw new Error(data.error);
-            }
-            setShowVideo(true);
+            setProof(signed);
           } catch (e) {
             setErrorText(e.message);
           }
@@ -67,48 +98,42 @@ const App = () => {
       </button>
       <button
         onClick={async () => {
-          const res = await fetch("http://localhost:3001/check", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              signature: "FAKE_SIGNATURE",
-            }),
-          });
-          const data = await res.json();
-          if (data.error) {
-            throw new Error(data.error);
-          }
           setShowVideo(true);
         }}
       >
         Fake log in (for testing)
       </button>
       <h3 style={{ color: "red" }}>{errorText}</h3>
-      {showVideo && (
-        <video
-          style={{ width: 1280, height: 720, backgroundColor: "black" }}
-          ref={(ref) => {
-            if (!ref) {
-              return;
-            }
-            if (HLS.isSupported()) {
-              var hls = new HLS({
-                debug: true,
-              });
-              hls.loadSource("http://localhost:3001/hls/index.m3u8");
-              hls.attachMedia(ref);
-              hls.on(HLS.Events.MEDIA_ATTACHED, function () {
-                ref.muted = true;
-                ref.play();
-              });
-            }
-          }}
-        />
-      )}
-    </div>
+      {(showVideo || proof) && <MistPlayer proof={proof} index={proof} />}
+    </main>
   );
+};
+
+const MistPlayer = ({ proof, index }) => {
+  useEffect(() => {
+    setTimeout(() => {
+      var a = function () {
+        window.mistPlay("b135bpp8yefanya8", {
+          target: document.getElementById("mistvideo"),
+          urlappend: `?proof=${proof}`,
+          forcePlayer: "hlsjs",
+          forceType: "html5/application/vnd.apple.mpegurl",
+          forcePriority: {
+            source: [["type", ["html5/application/vnd.apple.mpegurl"]]],
+          },
+        });
+      };
+      if (!window.mistplayers) {
+        var p = document.createElement("script");
+        p.src = "https://playback.livepeer.engineering/player.js";
+        document.head.appendChild(p);
+        p.onload = a;
+      } else {
+        a();
+      }
+    });
+  }, [proof]);
+  return <div index={index} class="mistvideo" id="mistvideo"></div>;
 };
 
 ReactDOM.render(<App />, document.querySelector("main"));

@@ -4,7 +4,9 @@
   "description": "Example of gating a Livepeer stream behind an NFT",
   "main": "check-video-nft.js",
   "scripts": {
-    "prepare": "parcel build --target worker check-video-nft.ts",
+    "prepare": "run-s prepare:client prepare:server",
+    "prepare:server": "parcel build --target worker check-video-nft.ts",
+    "prepare:client": "parcel build --target worker index.html",
     "start": "miniflare dist/check-video-nft.js",
     "rebuild": "run-s prepare start",
     "dev": "nodemon --ext ts -x npm run rebuild"
@@ -34,6 +36,8 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^3.10.0",
+    "@parcel/optimizer-data-url": "2.5.0",
+    "@parcel/transformer-inline-string": "2.5.0",
     "@types/http-proxy": "^1.17.9",
     "@types/jest": "^27.5.1",
     "@types/service-worker-mock": "^2.0.1",
